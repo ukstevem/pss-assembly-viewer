@@ -1,0 +1,25 @@
+services:
+  assembly-viewer:
+    image: ghcr.io/ukstevem/pss-assembly-viewer:${IMAGE_TAG:-latest}
+    container_name: assembly-viewer
+    restart: unless-stopped
+    # Canonical env lives with the gateway project (platform-portal).
+    # Edit one file, every app picks it up.
+    env_file:
+      - ../platform-portal/.env
+    environment:
+      - PORT=3007
+      - DOC_SERVICE_URL=${DOC_SERVICE_URL:-http://10.0.0.75:80}
+    ports:
+      - "3007:3007"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3007/assembly/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+networks:
+  default:
+    name: platform_net
+    external: true
