@@ -73,6 +73,47 @@ image: ghcr.io/ukstevem/pss-assembly-viewer:<previous-sha>
 
 Then `docker compose -f docker-compose.app.yml up -d`. No other app is affected.
 
+## Canary deploy (test alongside the live monorepo version)
+
+Use this when you want to validate a new build on the Pi without disturbing the
+live `/assembly/` route that users are currently hitting through the gateway.
+
+```bash
+ssh pi@10.0.0.75
+cd /opt
+sudo mkdir -p pss-assembly-viewer
+sudo chown "$USER:$USER" pss-assembly-viewer
+git clone https://github.com/ukstevem/pss-assembly-viewer.git pss-assembly-viewer   # first time
+# or: cd /opt/pss-assembly-viewer && git pull
+
+cd /opt/pss-assembly-viewer
+docker compose -f docker-compose.canary.yml pull
+docker compose -f docker-compose.canary.yml up -d
+```
+
+Test at **`http://10.0.0.75:3107/assembly/`**. The live version at
+`http://10.0.0.75:3000/assembly/` (via gateway) is **untouched**.
+
+Pin a specific image tag for the canary instead of `:latest`:
+
+```bash
+CANARY_TAG=abc1234 docker compose -f docker-compose.canary.yml up -d
+```
+
+Tear down the canary when done (live is unaffected):
+
+```bash
+docker compose -f docker-compose.canary.yml down
+```
+
+**Expected behaviour during canary test:**
+- `/assembly/` routes render and all API routes (`/api/assembly-data`, `/api/drawing`,
+  `/api/export-pdf`, `/api/stl/*`) respond.
+- Sidebar links to other apps (`/jobcards`, `/timesheets`, etc.) jump back to
+  the live gateway at `:3000` — that's fine, those links are baked with
+  `NEXT_PUBLIC_APP_URL`.
+- Auth flow works because it uses the same Supabase keys from the shared env.
+
 ## Skill doc
 
 When working on this repo with an AI assistant, point it at

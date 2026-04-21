@@ -1,0 +1,31 @@
+# Canary stack — test the extracted assembly-viewer on the Pi WITHOUT
+# touching the live monorepo version running behind the gateway.
+#
+# - Container name differs from live (no collision).
+# - Host port 3107 (3007 + 100) — live listens internally only on
+#   platform_net; there is no port collision at the host level.
+# - Intentionally NOT on platform_net: nginx must never resolve this
+#   as `assembly-viewer`, otherwise gateway traffic could land here.
+# - Uses the same image as production and the same shared env.
+#
+# Access:   http://10.0.0.75:3107/assembly/
+# Live:     http://10.0.0.75:3000/assembly/    (unchanged, via gateway)
+
+services:
+  assembly-viewer-canary:
+    image: ghcr.io/ukstevem/pss-assembly-viewer:${CANARY_TAG:-latest}
+    container_name: assembly-viewer-canary
+    restart: unless-stopped
+    env_file:
+      - ../platform-portal/.env
+    environment:
+      - PORT=3007
+      - DOC_SERVICE_URL=${DOC_SERVICE_URL:-http://10.0.0.75:80}
+    ports:
+      - "3107:3007"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3007/assembly/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
